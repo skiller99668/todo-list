@@ -4,8 +4,25 @@ A small CRUD API for managing a to-do list, built with Node.js and Express. Task
 
 ## Installation & Running
 
+Run the following commands in your terminal of choice (e.g. Terminal on Mac, Command Prompt or PowerShell on Windows).
+
+**1. Clone the repo**
 ```bash
-npm install 
+git clone https://github.com/skiller99668/todo-list.git
+```
+ 
+**2. Move into the project folder**
+```bash
+cd todo-list
+```
+ 
+**3. Install dependencies**
+```bash
+npm install
+```
+ 
+**4. Start the server**
+```bash
 node app.js
 ```
 
