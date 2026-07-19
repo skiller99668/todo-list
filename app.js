@@ -38,14 +38,46 @@ app.post('/tasks', (req, res) => {
     if (!req.body.title) {
         return res.status(400).json({ error: 'Title is required' });
     }
+
+    let maxId = 0;
+    for (let i = 0; i < tasks.length; i++) {
+        if (tasks[i].id > maxId) {
+            maxId = tasks[i].id;
+        }
+    }
+
     const newTask = {
-        id: tasks.length + 1,
+        id: maxId + 1,
         title: req.body.title,
         done: false
     };
 
     tasks.push(newTask);
     res.status(201).json(newTask);
+});
+
+app.put('/tasks/:id', (req, res) => {
+    const taskId = parseInt(req.params.id);
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+        return res.status(404).json({ error: `Task ${taskId} not found` });
+    }
+    if (!req.body) {
+        return res.status(400).json({ error: 'Empty request body' });
+    }
+    task.title = req.body.title || task.title;
+    task.done = req.body.done || task.done;
+    res.json(task);
+});
+
+app.delete('/tasks/:id', (req, res) => {
+    const taskId = parseInt(req.params.id);
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+        return res.status(404).json({ error: `Task ${taskId} not found` });
+    }
+    tasks = tasks.filter(t => t.id !== taskId);
+    res.status(204).send();
 });
 
 app.listen(port, () => {
