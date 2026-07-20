@@ -8,6 +8,12 @@ const port = 3000;
 app.use(express.json());
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+require('dotenv').config();
+const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
 let tasks = [
   { id: 1, title: 'Task 1', done: false },
   { id: 2, title: 'Task 2', done: true },
@@ -23,15 +29,16 @@ app.get('/health', (req, res) => {
   res.json({"status": "ok"});
 });
 
-app.get('/tasks', (req, res) => {
-  res.json(tasks);
+app.get('/tasks', async (req, res) => {
+    const result = await pool.query('SELECT * FROM tasks');
+    res.json(result.rows);
 });
 
-app.get('/tasks/:id', (req, res) => {
+app.get('/tasks/:id', async (req, res) => {
     const taskId = parseInt(req.params.id);
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-        res.json(task);
+    const result = await pool.query('SELECT * FROM tasks WHERE id = $1', [taskId]);
+    if (result.rows.length > 0) {
+        res.json(result.rows[0]);
     } 
     else {
         res.status(404).json({ error: `Task ${taskId} not found` });
