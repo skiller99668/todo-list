@@ -1,32 +1,39 @@
 # Task API
 
-A small CRUD API for managing a to-do list, built with Node.js and Express. Tasks are stored in memory (no database) and support full CRUD — create, read, update, and delete. Interactive API documentation is served via Swagger UI.
+A small CRUD API for managing a to-do list, built with Node.js, Express, and PostgreSQL. Tasks are stored in a Postgres database and support full CRUD — create, read, update, and delete. Interactive API documentation is served via Swagger UI.
 
-## Installation & Running
+## Running the project
 
-Run the following commands in your terminal of choice (e.g. Terminal on Mac, Command Prompt or PowerShell on Windows).
+Everything (the API and the database) runs with a single command using Docker Compose.
 
 **1. Clone the repo**
 ```bash
 git clone https://github.com/skiller99668/todo-list.git
-```
- 
-**2. Move into the project folder**
-```bash
 cd todo-list
 ```
- 
-**3. Install dependencies**
+
+**2. Set up environment variables**
+
+Copy `.env.example` to `.env` and fill in your own values:
+(your own database password, url and database name)
 ```bash
-npm install
-```
- 
-**4. Start the server**
-```bash
-node app.js
+cp .env.example .env
 ```
 
-The server will start on `http://localhost:3000`.
+See `.env.example` for the required variables (database credentials and connection string).
+
+**3. Start everything**
+```bash
+docker compose up
+```
+
+This builds the API image, starts the Postgres database, and connects them together. The API will be available at `http://localhost:3000`.
+
+**4. Stop everything**
+```bash
+docker compose down
+```
+This will stop and remove the containers. Your created/modified tasks will remain unchanged in the database and all will be restored the next time _docker compose up_ is ran.
 
 ## Endpoints
 
@@ -44,17 +51,13 @@ The server will start on `http://localhost:3000`.
 
 Interactive documentation (Swagger UI) is available at:
 
-```
 http://localhost:3000/docs
-```
 
 ![Swagger UI screenshot](./swagger-ss.png)
 
 ## Example Request
 
-```
-$ curl -i -X POST http://localhost:3000/tasks -H "Content-Type: application/json" -d "{\"title\":\"Buy milk\"}"
-
+$ curl -i -X POST http://localhost:3000/tasks -H "Content-Type: application/json" -d "{"title":"Buy milk"}"
 HTTP/1.1 201 Created
 X-Powered-By: Express
 Content-Type: application/json; charset=utf-8
@@ -63,6 +66,20 @@ ETag: W/"28-PpSBYV7i68cXyGc7AhjVpkZkY5Q"
 Date: Sun, 19 Jul 2026 16:17:07 GMT
 Connection: keep-alive
 Keep-Alive: timeout=5
-
 {"id":4,"title":"Buy milk","done":false}
+
+
+## Database
+
+Data is persisted in PostgreSQL. To view it directly:
+ 
+```bash
+docker compose exec db psql -U postgres -d tasks
 ```
+ 
+```sql
+\dt
+SELECT * FROM tasks;
+```
+ 
+![Database screenshot](./db-ss.png)

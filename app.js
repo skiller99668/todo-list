@@ -8,11 +8,18 @@ const port = 3000;
 app.use(express.json());
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+require('dotenv').config();
+const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
 let tasks = [
   { id: 1, title: 'Task 1', done: false },
   { id: 2, title: 'Task 2', done: true },
   { id: 3, title: 'Task 3', done: false }
 ];
+
 
 
 app.get('/', (req, res) => {
@@ -23,67 +30,65 @@ app.get('/health', (req, res) => {
   res.json({"status": "ok"});
 });
 
-app.get('/tasks', (req, res) => {
-  res.json(tasks);
+app.get('/tasks', async (req, res) => {
+    const result = await pool.query('SELECT * FROM tasks');
+    res.json(result.rows);
 });
 
-app.get('/tasks/:id', (req, res) => {
+app.get('/tasks/:id', async (req, res) => {
     const taskId = parseInt(req.params.id);
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-        res.json(task);
+    const result = await pool.query('SELECT * FROM tasks WHERE id = $1', [taskId]);
+    if (result.rows.length > 0) {
+        res.json(result.rows[0]);
     } 
     else {
         res.status(404).json({ error: `Task ${taskId} not found` });
     }
 });
 
-app.post('/tasks', (req, res) => {
+app.post('/tasks', async (req, res) => {
     if (!req.body.title) {
         return res.status(400).json({ error: 'Title is required' });
     }
 
-    let maxId = 0;
-    for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id > maxId) {
-            maxId = tasks[i].id;
-        }
-    }
-
-    const newTask = {
-        id: maxId + 1,
-        title: req.body.title,
-        done: false
-    };
-
-    tasks.push(newTask);
-    res.status(201).json(newTask);
+    const result = await pool.query('INSERT INTO tasks (title, done) VALUES ($1, $2) RETURNING *', [req.body.title, req.body.done ?? false]);
+    res.status(201).json(result.rows[0]);
 });
 
-app.put('/tasks/:id', (req, res) => {
+app.put('/tasks/:id', async (req, res) => {
     const taskId = parseInt(req.params.id);
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) {
-        return res.status(404).json({ error: `Task ${taskId} not found` });
-    }
+
     if (!req.body) {
         return res.status(400).json({ error: 'Empty request body' });
     }
-    task.title = req.body.title || task.title;
-    task.done = req.body.done || task.done;
-    res.json(task);
-});
-
-app.delete('/tasks/:id', (req, res) => {
-    const taskId = parseInt(req.params.id);
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) {
+    const existingTaskResult = await pool.query('SELECT * FROM tasks WHERE id =$1', [taskId]);
+    if (existingTaskResult.rows.length === 0) {
         return res.status(404).json({ error: `Task ${taskId} not found` });
     }
-    tasks = tasks.filter(t => t.id !== taskId);
+    const task = existingTaskResult.rows[0];
+
+    const result = await pool.query('UPDATE tasks SET title = $1, done = $2 WHERE id = $3 RETURNING *', [req.body.title ?? task.title, req.body.done ?? task.done, taskId]);
+
+    res.json(result.rows[0]);
+});
+
+app.delete('/tasks/:id', async (req, res) => {
+    const taskId = parseInt(req.params.id);
+
+    const existingTaskResult = await pool.query('SELECT * FROM tasks WHERE id =$1', [taskId]);
+    if (existingTaskResult.rows.length === 0) {
+        return res.status(404).json({ error: `Task ${taskId} not found` });
+    }
+
+    const result = await pool.query('DELETE FROM tasks WHERE id = $1', [taskId]);
     res.status(204).send();
 });
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong.' });
 });
