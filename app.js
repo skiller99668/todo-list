@@ -68,21 +68,9 @@ app.post('/tasks', (req, res) => {
         return res.status(400).json({ error: 'Title is required' });
     }
 
-    let maxId = 0;
-    for (let i = 0; i < tasks.length; i++) {
-        if (tasks[i].id > maxId) {
-            maxId = tasks[i].id;
-        }
-    }
+    const newTask = db.prepare('INSERT INTO tasks (title, done) VALUES (?, ?)').run(req.body.title, 0);
 
-    const newTask = {
-        id: maxId + 1,
-        title: req.body.title,
-        done: false
-    };
-
-    tasks.push(newTask);
-    res.status(201).json(newTask);
+    res.status(201).json(newTask.changes ? { id: newTask.lastInsertRowid, title: req.body.title, done: 0 } : { error: 'Failed to create task' });
 });
 
 app.put('/tasks/:id', (req, res) => {
