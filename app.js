@@ -30,6 +30,10 @@ module.exports = db;
 
 const port = 3000;
 
+function getTask(id) {
+    return db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+}
+
 app.use(express.json());
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
@@ -37,7 +41,6 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal Server Error' });
 });
-
 
 app.get('/', (req, res) => {
   res.json({"name": "Task API", "version": "1.0", "endpoint": ["/tasks"]});
@@ -54,7 +57,7 @@ app.get('/tasks', (req, res) => {
 
 app.get('/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
-    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+    const task = getTask(taskId);
     if (task && Object.keys(task).length !== 0) {
         res.json(task);
     } 
@@ -68,32 +71,35 @@ app.post('/tasks', (req, res) => {
         return res.status(400).json({ error: 'Title is required' });
     }
 
-    const newTask = db.prepare('INSERT INTO tasks (title, done) VALUES (?, ?)').run(req.body.title, 0);
+    const newTask = db.prepare('INSERT INTO tasks (title, done) VALUES (?, ?)').run(req.body.title, req.body.done ?? 0);
 
-    res.status(201).json(newTask.changes ? { id: newTask.lastInsertRowid, title: req.body.title, done: 0 } : { error: 'Failed to create task' });
+    res.status(201).json(newTask.changes ? { id: newTask.lastInsertRowid, title: req.body.title, done: req.body.done ?? 0 } : { error: 'Failed to create task' });
 });
 
 app.put('/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) {
+
+    const existingTask = getTask(taskId);
+
+    if (!existingTask) {
         return res.status(404).json({ error: `Task ${taskId} not found` });
     }
-    if (!req.body) {
-        return res.status(400).json({ error: 'Empty request body' });
+
+    if (req.body.title === undefined) {
+        return res.status(400).json({ error: 'Empty request body (need title)' });
     }
-    task.title = req.body.title || task.title;
-    task.done = req.body.done || task.done;
-    res.json(task);
+    const task = db.prepare('UPDATE tasks SET title = ?, done = ? WHERE id = ?').run(req.body.title, req.body.done ?? existingTask.done, taskId);
+    
+    res.json(task.changes ? { id: taskId, title: req.body.title, done: req.body.done ?? existingTask.done } : { id: taskId, title: req.body.title ?? existingTask.title, done: req.body.done ?? existingTask.done });
 });
 
 app.delete('/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) {
+    const existingTask = getTask(taskId);
+    if (!existingTask) {
         return res.status(404).json({ error: `Task ${taskId} not found` });
     }
-    tasks = tasks.filter(t => t.id !== taskId);
+    db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
     res.status(204).send();
 });
 
