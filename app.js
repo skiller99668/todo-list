@@ -33,7 +33,10 @@ const port = 3000;
 app.use(express.json());
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
 
 
 app.get('/', (req, res) => {
@@ -45,13 +48,14 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/tasks', (req, res) => {
+  const tasks = db.prepare('SELECT * FROM tasks').all();
   res.json(tasks);
 });
 
 app.get('/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+    if (task && Object.keys(task).length !== 0) {
         res.json(task);
     } 
     else {
