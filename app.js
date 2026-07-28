@@ -83,6 +83,37 @@ app.delete('/tasks/:id', async (req, res) => {
     res.status(204).send();
 });
 
+// Authentifcation System with supabase:
+// ===================================================
+
+// middleware
+
+async function verifyToken(req, res, next)
+{
+    const auth_header = req.headers.authorization
+
+    if (!auth_header || !auth_header.startsWith('Bearer '))
+    {
+        return res.status(401).json({error: 'Access token required'})
+    }
+    
+    const token = auth_header.split(' ')[1];
+    if (!token)
+    {
+        return res.status(401).json({error: 'Access token required'})
+    }
+
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error)
+    {
+        return res.status(401).json({ error: 'Invalid or expired token'})
+    }
+
+    req.user = data.user;
+    next();
+}
+
 app.post('/auth/signup', async (req, res) => {
     const { email, password } = req.body;
 
@@ -118,31 +149,25 @@ app.post('/auth/login', async (req, res) => {
 
 app.get('/public/info', (req, res) => {
     return res.status(200).json({ message: "Welcome stranger! This info is public."})
-})
+});
 
-app.get('/protected/profile', async (req, res) => {
-    const auth_header = req.headers.authorization
+app.get('/protected/profile', verifyToken, (req, res) => {
+    return res.status(200).json({id: req.user.id, email: req.user.email, created_at: req.user.created_at})
+});
 
-    if (!auth_header || !auth_header.startsWith('Bearer '))
-    {
-        return res.status(401).json({error: 'Access token required 1'})
-    }
-    
-    const token = auth_header.split(' ')[1];
-    if (!token)
-    {
-        return res.status(401).json({error: 'Access token required 2'})
-    }
+app.get('/protected/dashboard', verifyToken, (req, res) =>{
+    res.json({ message: 'Welcome to your dashboard'})
+});
 
-    const { data, error } = await supabase.auth.getUser(token);
-
-    if (error)
-    {
-        return res.status(401).json({ error: 'Invalid or expired token'})
+app.post('/auth/logout', verifyToken, async (req, res) => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        return res.status(401).json({ error: error.message})
     }
 
-    return res.status(200).json({id: data.user.id, email: data.user.email, created_at: data.user.created_at})
-})
+    return res.status(204).send();
+});
+// ===================================================
 
 app.use((err, req, res, next) => {
     console.error(err.stack);
