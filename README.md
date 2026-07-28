@@ -73,7 +73,7 @@ http://localhost:3000/docs
 
 Protected routes show a lock icon. Click **Authorize** at the top right (lock icon), paste in an access token from `/auth/login`, and you can then use **Try it out** on any protected route directly from the browser.
 
-![Swagger UI screenshot](./swagger-ss.png)
+![Swagger UI screenshot](./image.png)
 
 ## Example Requests
 
