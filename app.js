@@ -116,6 +116,27 @@ app.post('/auth/login', async (req, res) => {
 });
 
 
+app.get('/public/info', (req, res) => {
+    return res.status(200).json({ message: "Welcome stranger! This info is public."})
+})
+
+app.get('/protected/profile', (req, res) => {
+    const auth_header = req.headers.authorization
+
+    if (!auth_header || !auth_header.startsWith('Bearer '))
+    {
+        return res.status(401).json({error: 'Access token required'})
+    }
+    
+    const token = auth_header.split(' ')[1];
+    if (!token)
+    {
+        return res.status(401).json({error: 'Access token required'})
+    }
+
+    return res.status(200).json({message: 'a'})
+})
+
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ error: 'Something went wrong.' });
