@@ -2,25 +2,26 @@ const express = require('express');
 const app = express();
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./openapi.json');
+require('dotenv').config();
 
 const port = 3000;
 
 app.use(express.json());
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-require('dotenv').config();
+
 const { Pool } = require('pg');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-let tasks = [
-  { id: 1, title: 'Task 1', done: false },
-  { id: 2, title: 'Task 2', done: true },
-  { id: 3, title: 'Task 3', done: false }
-];
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong.' });
+});
 
 app.get('/', (req, res) => {
   res.json({"name": "Task API", "version": "1.0", "endpoint": ["/tasks"]});
@@ -88,7 +89,3 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong.' });
-});
