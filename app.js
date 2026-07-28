@@ -120,21 +120,28 @@ app.get('/public/info', (req, res) => {
     return res.status(200).json({ message: "Welcome stranger! This info is public."})
 })
 
-app.get('/protected/profile', (req, res) => {
+app.get('/protected/profile', async (req, res) => {
     const auth_header = req.headers.authorization
 
     if (!auth_header || !auth_header.startsWith('Bearer '))
     {
-        return res.status(401).json({error: 'Access token required'})
+        return res.status(401).json({error: 'Access token required 1'})
     }
     
     const token = auth_header.split(' ')[1];
     if (!token)
     {
-        return res.status(401).json({error: 'Access token required'})
+        return res.status(401).json({error: 'Access token required 2'})
     }
 
-    return res.status(200).json({message: 'a'})
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error)
+    {
+        return res.status(401).json({ error: 'Invalid or expired token'})
+    }
+
+    return res.status(200).json({id: data.user.id, email: data.user.email, created_at: data.user.created_at})
 })
 
 app.use((err, req, res, next) => {
